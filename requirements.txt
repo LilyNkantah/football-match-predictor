@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+os
+requests
+json
+datetime
+numpy
+python-dotenv
