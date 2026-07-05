@@ -20,11 +20,10 @@ def fetch_data():
     print("Fetching data from API...")
 
     # PREMIER LEAGUE = ID 39
-    # SEASONS 2021/22 - 2025/26
+    # SEASONS 2022/23 - 2024/25
     endpoints = [
-        # "fixtures/headtohead?league=39&season=2021&h2h=33-34&last=5", will run h2h alone until fulfilled for all teams, then remove
-        "fixtures?league=39&season=2021", # run 5 times with correct parameters, then remove
-        "odds?season=2021&league=39" # run 5 times with correct parameters, then remove
+        # "fixtures/headtohead?league=39&season=2022&h2h=33-34&last=5", will run h2h alone until fulfilled for all teams, then remove
+        "fixtures?league=39&season=2024", # run 5 times with correct parameters, then remove
     ]
 
     for endpoint in endpoints:
@@ -37,7 +36,6 @@ def fetch_data():
 
         print(f"Data from endpoint '{endpoint}' successfully ingested.")
 
-    
     
 def make_get_request(url, headers):
     try:
