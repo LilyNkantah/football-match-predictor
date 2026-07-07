@@ -35,12 +35,25 @@ def extract_unique_team_pairs():
         # Store the team IDs in the set
         fixture_team_ids.add(tuple(sorted([home_team_id, away_team_id])))  # sort to ensure uniqueness regardless of home/away order
 
-
-    #print(f"Total unique team ID pairs for all fixtures: {len(fixture_team_ids)}")
-    #fixture_team_ids.remove((33,36))
     print(f"Total unique team ID pairs for all fixtures: {len(fixture_team_ids)}")
     save_fixtures(fixture_team_ids)  # Save the unique team ID pairs to a text file
     print(f"Unique team ID pairs for all fixtures have been saved to 'remaining_fixtures_for_h2h.txt'.")
+
+def remove_used_fixture(team1_id, team2_id):
+    # Read the existing fixtures from the file
+    with open("remaining_fixtures_for_h2h.txt", "r") as f:
+        fixtures = f.readlines()
+
+    # Create a tuple of the team IDs to remove
+    fixture_to_remove = tuple(sorted([team1_id, team2_id]))
+
+    # Filter out the fixture to remove
+    updated_fixtures = [fixture for fixture in fixtures if tuple(map(int, fixture.strip()[1:-1].split(','))) != fixture_to_remove]
+
+    print(f"Length before removal: {len(fixtures)}. Removed fixture: {fixture_to_remove}. Remaining fixtures: {len(updated_fixtures)}")
+
+    # Write the updated fixtures back to the file
+    save_fixtures([tuple(map(int, fixture.strip()[1:-1].split(','))) for fixture in updated_fixtures])
 
 def save_fixtures(team_ids):
     with open("remaining_fixtures_for_h2h.txt", "w") as f:
@@ -52,7 +65,3 @@ if __name__ == "__main__":
     extract_unique_team_pairs()
     # extract_seasonal_team_goal_stats()
     # extract_recent_team_form_stats()
-
-    
-
-

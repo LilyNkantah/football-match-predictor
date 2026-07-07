@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 import requests
 import json
 from datetime import datetime
+import time
+
+import fixture_manipulation  # Import the fixture_manipulation module to access its functions
 
 load_dotenv()  # Load environment variables from .env file
 
@@ -21,20 +24,32 @@ def fetch_data():
 
     # PREMIER LEAGUE = ID 39
     # SEASONS 2022/23 - 2024/25
-    endpoints = [
-        # "fixtures/headtohead?league=39&season=2022&h2h=33-34&last=5", will run h2h alone until fulfilled for all teams, then remove
-        "fixtures?league=39&season=2024", # run 5 times with correct parameters, then remove
-    ]
 
-    for endpoint in endpoints:
+    # 79 LEFT
+    count = 79
+    while count > 0:
+        # get team IDs for first fixture in the fixtures file
+        with open('remaining_fixtures_for_h2h.txt') as f:
+            first_line = f.readline().strip('\n')
+            first_line = first_line[1:-1]  # Remove the parentheses from the string representation of the tuple
+            first_line = first_line.split(',')
+
+            team1_id, team2_id = map(int, first_line)  # Convert the split strings to integers
+
+        endpoint = f"fixtures/headtohead?h2h=" + str(team1_id) + "-" + str(team2_id) # will run h2h alone until fulfilled for all teams, then remove
+        
         # Make the GET request to the API and receive the JSON response
         data = make_get_request(API_URL + endpoint, headers)
 
         # Save the data to my SQLite database or to a file for further processing before inserting into the database
-        with open(f'{endpoint.replace("?", "_").replace("&", "_")}.json', 'w') as f:
+        with open(f'{endpoint.replace("?", "_").replace("&", "_").replace("/", "_")}.json', 'w') as f:
             json.dump(data, f)
 
         print(f"Data from endpoint '{endpoint}' successfully ingested.")
+        
+        fixture_manipulation.remove_used_fixture(team1_id, team2_id)  # Remove the used fixture from the text file
+        count -= 1  # Decrement the count to eventually exit the loop
+        time.sleep(5)  # Sleep for 5 seconds to avoid hitting the API rate limit
 
     
 def make_get_request(url, headers):
