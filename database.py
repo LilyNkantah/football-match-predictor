@@ -3,6 +3,8 @@
 #   interacting with a database using SQLAlchemy, 
 #   and defining data models with Pydantic.
 
+from datetime import datetime
+
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import DateTime, create_engine, Column, Integer, String
 import sqlalchemy
@@ -59,9 +61,9 @@ class HeadToHead(Base):
     team1_id = Column(Integer, sqlalchemy.ForeignKey("teams.team_id"))
     team2_id = Column(Integer, sqlalchemy.ForeignKey("teams.team_id"))
     season_id = Column(Integer, sqlalchemy.ForeignKey("seasons.id"))
-    winner_team_id = Column(Integer, sqlalchemy.ForeignKey("teams.team_id"), nullable=True)  # Nullable to allow for draws or unplayed matches
-    team1_goals_scored = Column(Integer, nullable=True)  # Nullable to allow for unplayed matches
-    team2_goals_scored = Column(Integer, nullable=True)  # Nullable to allow for unplayed matches
+    winner_team_id = Column(Integer, sqlalchemy.ForeignKey("teams.team_id"), nullable=True) 
+    team1_goals_scored = Column(Integer, nullable=True) 
+    team2_goals_scored = Column(Integer, nullable=True)
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)
@@ -78,37 +80,74 @@ def get_db():
 
 # TEAMS
 class TeamCreate(BaseModel):
-    team_id: str
-    description: str
+    team_id: int
+    team_name: str
 
 class TeamResponse(TeamCreate):
     id: int
-    name: str
-    description: str
+    team_id: int
+    team_name: str
 
 # SEASONS
 class SeasonCreate(BaseModel):
-    name: str
+    start_year: int
+    end_year: int
+
+class SeasonResponse(SeasonCreate):
+    id: int
+    start_year: int
+    end_year: int
 
 # SEASONS PLAYED
 class SeasonPlayedCreate(BaseModel):
     team_id: int
     season_id: int
 
+class SeasonPlayedResponse(SeasonPlayedCreate):
+    team_id: int
+    season_id: int
+
 # FIXTURES
 class FixtureCreate(BaseModel):
+    season_id: int
+    date: datetime
     home_team_id: int
     away_team_id: int
+    winner_team_id: int | None = None  # Optional field to allow for draws or unplayed matches
+    home_goals_scored: int | None = None  # Optional field to allow for unplayed matches
+    away_goals_scored: int | None = None
+
+class FixtureResponse(FixtureCreate):
+    id: int
     season_id: int
+    date: datetime
+    home_team_id: int
+    away_team_id: int
+    winner_team_id: int | None = None
+    home_goals_scored: int | None = None
+    away_goals_scored: int | None = None
 
 # HEAD TO HEADS
 class HeadToHeadCreate(BaseModel):
+    current_fixture_id: int
+    past_fixture_date: datetime
     team1_id: int
     team2_id: int
     season_id: int
+    winner_team_id: int | None = None
+    team1_goals_scored: int | None = None
+    team2_goals_scored: int | None = None
 
-
-
+class HeadToHeadResponse(HeadToHeadCreate):
+    id: int
+    current_fixture_id: int
+    past_fixture_date: datetime
+    team1_id: int
+    team2_id: int
+    season_id: int
+    winner_team_id: int | None = None
+    team1_goals_scored: int | None = None
+    team2_goals_scored: int | None = None
 
 
 # Define API endpoint to create a new team in the database
@@ -123,9 +162,20 @@ async def create_team(team: TeamCreate, db: Session = Depends(get_db)):
 # Define API endpoint to read a Team by ID from the database
 @app.get("/teams/{team_id}", response_model=TeamResponse)
 async def read_team(team_id: int, db: Session = Depends(get_db)):
-    db_team = db.query(Team).filter(Team.id == team_id).first()  # Query the database for the team by ID
+    db_team = db.query(Team).filter(Team.team_id == team_id).first()  # Query the database for the team by ID
     if db_team is None:
         raise HTTPException(status_code=404, detail="Team not found")
+    return db_team
+
+
+# Define API endpoint to delete a Team by ID from the database
+@app.delete("/teams/{team_id}", response_model=TeamResponse)
+async def delete_team(team_id: int, db: Session = Depends(get_db)):
+    db_team = db.query(Team).filter(Team.team_id == team_id).first()
+    if db_team is None:
+        raise HTTPException(status_code=404, detail="Team not found")
+    db.delete(db_team)
+    db.commit()
     return db_team
 
 # Run the FastAPI application using Uvicorn if the script is executed directly
