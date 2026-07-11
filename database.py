@@ -11,6 +11,8 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 
+import db_dictionaries
+
 # Create a FastAPI application instance and configure the database connection using SQLAlchemy.
 app = FastAPI()
 DATABASE_URL = "sqlite:///./football_predictor.db"  # SQLite database URL for local development
@@ -67,14 +69,6 @@ class HeadToHead(Base):
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)
-
-# Define dependency to get a database session - gives db session to be used and ensures it is closed after use.
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 # Define Pydantic models for request and response data validation
 
@@ -150,35 +144,73 @@ class HeadToHeadResponse(HeadToHeadCreate):
     team2_goals_scored: int | None = None
 
 
-# Define API endpoint to create a new team in the database
-@app.post("/teams/", response_model=TeamResponse)
-async def create_team(team: TeamCreate, db: Session = Depends(get_db)):
-    db_team = Team(**team.model_dump())  # Create a new Team instance from the request data
-    db.add(db_team)  # Add the new team to the database session
-    db.commit()  # Commit the changes to the database
-    db.refresh(db_team)  # Refresh the instance with the committed changes
-    return db_team  # Return the created team
+# # Define API endpoint to create a new team in the database
+# @app.post("/teams/", response_model=TeamResponse)
+# async def create_team(team: TeamCreate, db: Session = Depends(get_db)):
+#     db_team = Team(**team.model_dump())  # Create a new Team instance from the request data
+#     db.add(db_team)  # Add the new team to the database session
+#     db.commit()  # Commit the changes to the database
+#     db.refresh(db_team)  # Refresh the instance with the committed changes
+#     return db_team  # Return the created team
 
-# Define API endpoint to read a Team by ID from the database
-@app.get("/teams/{team_id}", response_model=TeamResponse)
-async def read_team(team_id: int, db: Session = Depends(get_db)):
-    db_team = db.query(Team).filter(Team.team_id == team_id).first()  # Query the database for the team by ID
-    if db_team is None:
-        raise HTTPException(status_code=404, detail="Team not found")
-    return db_team
+# # Define API endpoint to read a Team by ID from the database
+# @app.get("/teams/{team_id}", response_model=TeamResponse)
+# async def read_team(team_id: int, db: Session = Depends(get_db)):
+#     db_team = db.query(Team).filter(Team.team_id == team_id).first()  # Query the database for the team by ID
+#     if db_team is None:
+#         raise HTTPException(status_code=404, detail="Team not found")
+#     return db_team
 
 
-# Define API endpoint to delete a Team by ID from the database
-@app.delete("/teams/{team_id}", response_model=TeamResponse)
-async def delete_team(team_id: int, db: Session = Depends(get_db)):
-    db_team = db.query(Team).filter(Team.team_id == team_id).first()
-    if db_team is None:
-        raise HTTPException(status_code=404, detail="Team not found")
-    db.delete(db_team)
-    db.commit()
-    return db_team
+# # Define API endpoint to delete a Team by ID from the database
+# @app.delete("/teams/{team_id}", response_model=TeamResponse)
+# async def delete_team(team_id: int, db: Session = Depends(get_db)):
+#     db_team = db.query(Team).filter(Team.team_id == team_id).first()
+#     if db_team is None:
+#         raise HTTPException(status_code=404, detail="Team not found")
+#     db.delete(db_team)
+#     db.commit()
+#     return db_team
+
+def add_teams_to_db(db):
+    for t_id, t_name in db_dictionaries.teams.items():
+        if not db.query(Team).filter(Team.team_id == t_id).first().exists():
+            db_team = Team(team_id=t_id, team_name=t_name)
+            db.add(db_team)
+            db.commit()
+            db.refresh(db_team)
+        else:
+            print("Team already exists in database.")
+    print("Teams added to database successfully.")
+
+def add_seasons_to_db(db):
+    for s_year, e_year in db_dictionaries.seasons.values():
+        if not db.query(Season).filter(Season.start_year == s_year).first():
+            db_season = Season(start_year=s_year, end_year=e_year)
+            db.add(db_season)
+            db.commit()
+            db.refresh(db_season)
+        else:
+            print("Season already exists in database.")
+    print("Seasons added to database successfully.")
+
+def add_seasons_played_to_db(db):
+    for t_id, s_list in db_dictionaries.seasons_played.items():
+        for s in s_list:
+             db_season_played_id = (db.query(Season).filter(Season.start_year == s).first()).id
+             print(db_season_played_id)
+
 
 # Run the FastAPI application using Uvicorn if the script is executed directly
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    #import uvicorn
+    #uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    # Define dependency to get a database session - gives db session to be used and ensures it is closed after use.
+    db = SessionLocal()
+    try:
+        add_teams_to_db(db)
+        add_seasons_to_db(db)
+        add_seasons_played_to_db(db)
+    finally:
+        db.close()

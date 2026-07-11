@@ -12,12 +12,12 @@ import json
 '''
 def extract_unique_team_pairs():
     # 2022/23 SEASON FIXTURES
-    with open('fixtures_league=39_season=2022.json') as json_file:
-        fixtures_file_2022 = json.load(json_file) # Load the JSON data from the file into a Python dictionary
+    with open('fixtures/fixtures_league=39_season=2023.json') as json_file:
+        fixtures_file_2023 = json.load(json_file) # Load the JSON data from the file into a Python dictionary
 
     fixture_team_ids = set()  # Set to store unique team ID pairs for all fixtures
 
-    for fixture in fixtures_file_2022.get('response', []):
+    for fixture in fixtures_file_2023.get('response', []):
         # fixture_id = fixture.get('fixture', {}).get('id')
         # home_team = fixture.get('teams', {}).get('home', {}).get('name')
         home_team_id = fixture.get('teams', {}).get('home', {}).get('id')
