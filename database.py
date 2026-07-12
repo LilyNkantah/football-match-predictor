@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from pydantic import BaseModel
 
 import db_dictionaries
+import fixture_manipulation
 
 # Create a FastAPI application instance and configure the database connection using SQLAlchemy.
 app = FastAPI()
@@ -174,7 +175,7 @@ class HeadToHeadResponse(HeadToHeadCreate):
 
 def add_teams_to_db(db):
     for t_id, t_name in db_dictionaries.teams.items():
-        if not db.query(Team).filter(Team.team_id == t_id).first().exists():
+        if db.query(Team).filter(Team.team_id == t_id).first() is None:
             db_team = Team(team_id=t_id, team_name=t_name)
             db.add(db_team)
             db.commit()
@@ -185,7 +186,7 @@ def add_teams_to_db(db):
 
 def add_seasons_to_db(db):
     for s_year, e_year in db_dictionaries.seasons.values():
-        if not db.query(Season).filter(Season.start_year == s_year).first():
+        if db.query(Season).filter(Season.start_year == s_year).first() is None:
             db_season = Season(start_year=s_year, end_year=e_year)
             db.add(db_season)
             db.commit()
@@ -197,9 +198,40 @@ def add_seasons_to_db(db):
 def add_seasons_played_to_db(db):
     for t_id, s_list in db_dictionaries.seasons_played.items():
         for s in s_list:
-             db_season_played_id = (db.query(Season).filter(Season.start_year == s).first()).id
-             print(db_season_played_id)
+            db_season_played = db.query(Season).filter(Season.start_year == s).first()
+            if not db_season_played is None: 
+                db_season_played_id = db_season_played.id
+                if db.query(SeasonPlayed).filter(SeasonPlayed.team_id == t_id, SeasonPlayed.season_id == db_season_played_id).first() is None:
+                    db_team_played = SeasonPlayed(team_id=t_id, season_id=db_season_played_id)
+                    db.add(db_team_played)
+                    db.commit()
+                    db.refresh(db_team_played)
+                else:
+                    print("Season played by this team already exists in database.")
+        print(f"Seasons played by team with ID {t_id} added to database successfully.")
 
+def add_fixtures_to_db(db):
+    fix_info_2022 = fixture_manipulation.extract_fixture_info_for_db(2022)
+    fix_info_2023 = fixture_manipulation.extract_fixture_info_for_db(2023)
+    fix_info_2024 = fixture_manipulation.extract_fixture_info_for_db(2024)
+    infos = [fix_info_2022, fix_info_2023, fix_info_2024]
+
+    for inf in infos:
+        for fix in inf:
+            # query into season table to get s_id for each season
+            if not db.query(Season).filter(Season.start_year == fix[0]).first() is None:
+                s_id = (db.query(Season).filter(Season.start_year == fix[0]).first()).id
+                if db.query(Fixture).filter(Fixture.date == fix[1], Fixture.home_team_id == fix[2], Fixture.away_team_id == fix[3]).first() is None:
+                    db_fixture = Fixture(season_id=s_id, date=fix[1], home_team_id=fix[2], 
+                                        away_team_id=fix[3], winner_team_id=fix[4], 
+                                        home_goals_scored=fix[5], away_goals_scored=fix[6])
+                    db.add(db_fixture)
+                    db.commit()
+                    db.refresh(db_fixture)
+                else:
+                    print("Fixture already exists in database.")
+        print("Fixtures for season added to database successfully.")
+                
 
 # Run the FastAPI application using Uvicorn if the script is executed directly
 if __name__ == "__main__":
@@ -212,5 +244,6 @@ if __name__ == "__main__":
         add_teams_to_db(db)
         add_seasons_to_db(db)
         add_seasons_played_to_db(db)
+        add_fixtures_to_db(db)
     finally:
         db.close()

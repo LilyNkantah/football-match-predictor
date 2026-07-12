@@ -25,8 +25,8 @@ def fetch_data():
     # PREMIER LEAGUE = ID 39
     # SEASONS 2022/23 - 2024/25
 
-    # 69 LEFT
-    count = 4
+    # 59 LEFT
+    count = 15
     while count > 0:
         # get team IDs for first fixture in the fixtures file
         with open('remaining_fixtures_for_h2h.txt') as f:

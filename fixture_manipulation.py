@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 ''' 
     This script processes the fixtures data for the 2022/23 Premier League season, 
     and completes all further calculations of stats required for other analysis, such as team matchups for h2h comparisons, team goal stats, and recent form.
@@ -12,25 +13,14 @@ import json
 '''
 def extract_unique_team_pairs():
     # 2022/23 SEASON FIXTURES
-    with open('fixtures/fixtures_league=39_season=2023.json') as json_file:
-        fixtures_file_2023 = json.load(json_file) # Load the JSON data from the file into a Python dictionary
+    with open('fixtures/fixtures_league=39_season=2024.json') as json_file:
+        fixtures_file = json.load(json_file) # Load the JSON data from the file into a Python dictionary
 
     fixture_team_ids = set()  # Set to store unique team ID pairs for all fixtures
 
-    for fixture in fixtures_file_2023.get('response', []):
-        # fixture_id = fixture.get('fixture', {}).get('id')
-        # home_team = fixture.get('teams', {}).get('home', {}).get('name')
+    for fixture in fixtures_file.get('response', []):
         home_team_id = fixture.get('teams', {}).get('home', {}).get('id')
-        # away_team = fixture.get('teams', {}).get('away', {}).get('name')
         away_team_id = fixture.get('teams', {}).get('away', {}).get('id')
-        # date = fixture.get('fixture', {}).get('date')
-        # status = fixture.get('fixture', {}).get('status', {}).get('short')
-        # if fixture.get('teams', {}).get('home', {}).get('winner') == True:
-        #     winner = home_team
-        # elif fixture.get('teams', {}).get('away', {}).get('winner') == True:
-        #     winner = away_team
-        # else:
-        #     winner = None # Match ended in a draw
 
         # Store the team IDs in the set
         fixture_team_ids.add(tuple(sorted([home_team_id, away_team_id])))  # sort to ensure uniqueness regardless of home/away order
@@ -60,8 +50,32 @@ def save_fixtures(team_ids):
         for fixture in team_ids:
             f.write(str(fixture) + "\n")
 
+def extract_fixture_info_for_db(season_start_year):
+    with open(f'fixtures/fixtures_league=39_season={season_start_year}.json') as json_file:
+        fixtures_file = json.load(json_file) # Load the JSON data from the file into a Python dictionary
+
+    fixture_info = []  # Store all fixture info that will be inserted into database 
+
+    for fixture in fixtures_file.get('response', []):
+        s = fixture.get('league', {}).get('season', {})
+        date = datetime.fromisoformat(fixture.get('fixture', {}).get('date', {}))
+        ht_id = fixture.get('teams', {}).get('home', {}).get('id')
+        at_id = fixture.get('teams', {}).get('away', {}).get('id')
+        hgs = fixture.get('goals', {}).get('home', {})
+        ags = fixture.get('goals', {}).get('away', {})
+        if hgs > ags:
+            winner_id = ht_id
+        elif ags > hgs:
+            winner_id = at_id
+        else:
+            winner_id = None
+        fixture_info.append([s, date, ht_id, at_id, winner_id, hgs, ags])
+    return fixture_info
+
+
 
 if __name__ == "__main__":
-    extract_unique_team_pairs()
+    # extract_unique_team_pairs()
     # extract_seasonal_team_goal_stats()
     # extract_recent_team_form_stats()
+    extract_fixture_info_for_db(2022)
